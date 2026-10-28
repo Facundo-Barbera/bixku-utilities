@@ -44,6 +44,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// `bixku://notify?...` links; everything else is ignored. Content is validated downstream.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            URLSchemeNotificationSource.shared.receive(url)
+        }
+    }
+
     @MainActor
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard host.hasActiveModules else { return .terminateNow }

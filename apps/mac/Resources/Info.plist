@@ -29,6 +29,25 @@
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <!--
+      bixku://notify URL scheme: lets scripts and the bixku-notify helper hand notifications
+      to the Dock module (see docs/notifications.md). Input is validated and rate limited.
+    -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>online.bixku.utilities.url</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>bixku</string>
+            </array>
+        </dict>
+    </array>
+    <key>NSFocusStatusUsageDescription</key>
+    <string>Bixku Utilities can check whether a Focus is on, so the Dock module can respect it when it holds back notifications.</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Facundo Barbera. MIT License.</string>
     <!--
