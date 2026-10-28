@@ -797,7 +797,11 @@ class WorkflowTests(unittest.TestCase):
         src = read(MAC, "Sources", "BixkuUtilities", "Updates", "UpdaterController.swift")
         self.assertIn("SPUStandardUpdaterController", src)
         self.assertIn("Check for Updates…", src)
-        self.assertIn("CheckForUpdatesMenuItems", read(MAC, "Sources", "BixkuUtilities", "BixkuUtilitiesApp.swift"))
+        sources = ""
+        for dp, _, files in os.walk(os.path.join(MAC, "Sources")):
+            sources += "".join(read(dp, f) for f in files if f.endswith(".swift") and f != "UpdaterController.swift")
+        self.assertIn("CheckForUpdatesMenuItems(", sources)
+        self.assertIn("UpdaterController.shared", read(MAC, "Sources", "BixkuUtilities", "BixkuUtilitiesApp.swift"))
 
     def test_no_personal_data(self):
         """Release files carry no hosts, IPs, user paths or account identifiers."""
