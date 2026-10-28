@@ -5,11 +5,11 @@ import Foundation
 // declared in the module's own package with the module's namespace.
 
 extension EventName {
-    /// The frontmost app or its focused window changed. Producer: Dock (planned).
+    /// The frontmost app or its focused window changed. Producer: Dock (`DockEngine`).
     public static let activityChanged: EventName = "activity.changed"
-    /// A user notification was observed. Producer: Dock (planned).
+    /// A user notification was observed. Producer: Dock (`DockEngine`).
     public static let notificationReceived: EventName = "notification.received"
-    /// The active focus mode changed. Producer: Dock (planned).
+    /// The active focus mode changed. Producer: Dock (`DockEngine`).
     public static let modeChanged: EventName = "mode.changed"
     /// A module's lifecycle state changed. Producer: ``ModuleRegistry``.
     public static let moduleStateChanged: EventName = "module.state-changed"
@@ -26,12 +26,25 @@ public struct ActivityChanged: BixkuEventPayload, Equatable {
     public var windowTitle: String?
     /// Optional extra context (e.g. a document path or URL host), already privacy-filtered.
     public var detail: String?
+    /// Activity category as classified by the producer (`code`, `writing`, …), if any.
+    public var category: String?
+    /// Producer's confidence in `category`, from 0 to 1.
+    public var confidence: Double?
 
-    public init(appBundleID: String?, appName: String, windowTitle: String? = nil, detail: String? = nil) {
+    public init(
+        appBundleID: String?,
+        appName: String,
+        windowTitle: String? = nil,
+        detail: String? = nil,
+        category: String? = nil,
+        confidence: Double? = nil
+    ) {
         self.appBundleID = appBundleID
         self.appName = appName
         self.windowTitle = windowTitle
         self.detail = detail
+        self.category = category
+        self.confidence = confidence
     }
 }
 
