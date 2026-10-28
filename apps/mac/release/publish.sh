@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Publishes an already signed (and, for real releases, notarized) zip to the Sparkle feed in R2, in a safe order:
+#   pull feed and previous zips -> checks (monotonic, never overwrite) -> notes -> generate_appcast (+deltas)
+#   -> validation -> upload zips/deltas/notes -> appcast LAST -> public HTTPS verification.
+#   publish.sh <BixkuUtilities-VERSION.zip>
+# Env: TAG, VERSION (short), BUILD_NUMBER, CHANNEL (empty = stable), plus those of appcast.sh and r2.sh.
+#      NOTES_MD_OUT (optional): where to copy the markdown notes (GitHub Release body).
+# Dry-run (DRY_RUN=true):
+#   - requires R2_TEST_ONLY=1 and UPDATES_BASE_URL=<base>/test/<run_id> (see r2.sh), or R2_OFFLINE=1;
+#   - R2_OFFLINE=1 (no R2 credentials): nothing is uploaded; the feed is generated from scratch and copied to
+#     APPCAST_OUT (uploaded as a workflow artifact);
+#   - without SPARKLE_ED_PRIVATE_KEY an ephemeral EdDSA key pair is generated on the runner (masked, discarded).
+set -euo pipefail
+# shellcheck source=lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+ZIP="${1:-}"
+[ -f "$ZIP" ] || die "usage: publish.sh <$PRODUCT-VERSION.zip>"
+require_env VERSION BUILD_NUMBER
+OFFLINE="${R2_OFFLINE:-0}"
+if [ "${DRY_RUN:-false}" = true ]; then
+  if [ "$OFFLINE" != 1 ] && [ "${R2_TEST_ONLY:-0}" != 1 ]; then die "a dry-run requires R2_TEST_ONLY=1 (or R2_OFFLINE=1)"; fi
+  TAG=""
+  export NOTES_VERSION="$VERSION"
+  if [ -z "${SPARKLE_ED_PRIVATE_KEY:-}" ] || [ -z "${SPARKLE_ED_PUBLIC_KEY:-}" ]; then
+    keys="$(python3 -I "$RELEASE_SCRIPTS/appcast.py" gen-key)"
+    SPARKLE_ED_PRIVATE_KEY="$(printf '%s\n' "$keys" | sed -n 1p)"
+    mask_value "$SPARKLE_ED_PRIVATE_KEY"
+    SPARKLE_ED_PUBLIC_KEY="$(printf '%s\n' "$keys" | sed -n 2p)"
+    unset SPARKLE_ED_SIGNING_PUBLIC_KEY
+    export SPARKLE_ED_PRIVATE_KEY SPARKLE_ED_PUBLIC_KEY
+    log "dry-run: using an ephemeral Sparkle EdDSA key (the repository key is not configured)"
+  fi
+else
+  [ "$OFFLINE" != 1 ] || die "R2_OFFLINE=1 is only allowed in dry-runs"
+  [ "${R2_TEST_ONLY:-0}" != 1 ] || die "R2_TEST_ONLY=1 is only allowed in dry-runs"
+  require_env TAG
+fi
+NAME="$PRODUCT-$VERSION.zip"
+[ "$(basename "$ZIP")" = "$NAME" ] || die "the zip must be named $NAME"
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+if [ "$OFFLINE" = 1 ]; then
+  log "offline dry-run: no R2 credentials, starting from an empty feed and uploading nothing"
+else
+  bash "$RELEASE_SCRIPTS/r2.sh" pull "$work"
+fi
+
+status=0
+python3 -I "$RELEASE_SCRIPTS/appcast.py" check-new --dir "$work" --archive "$ZIP" --version "$VERSION" --build "$BUILD_NUMBER" || status=$?
+case "$status" in
+  0) ;;
+  3) log "idempotent retry of an already published version" ;;
+  *) exit 1 ;;
+esac
+
+cp "$ZIP" "$work/$NAME"
+bash "$RELEASE_SCRIPTS/notes.sh" "${TAG:-}" "$work" "$PRODUCT-$VERSION"
+if [ -n "${NOTES_MD_OUT:-}" ]; then cp "$work/notes/$VERSION.md" "$NOTES_MD_OUT"; fi
+bash "$RELEASE_SCRIPTS/appcast.sh" "$work" --new-build "$BUILD_NUMBER" --version "$VERSION" --channel "${CHANNEL:-}"
+
+BASE="$(strip_slash "$UPDATES_BASE_URL")"
+if [ "$OFFLINE" = 1 ]; then
+  if [ -n "${APPCAST_OUT:-}" ]; then
+    mkdir -p "$APPCAST_OUT"
+    cp "$work/appcast.xml" "$work/$PRODUCT-$VERSION.html" "$APPCAST_OUT/"
+  fi
+  summary "### Dry-run feed (not uploaded)"
+  summary "- Version \`$VERSION\` (CFBundleVersion \`$BUILD_NUMBER\`): appcast generated and validated; attached as an artifact."
+  log "offline dry-run: appcast generated and validated, nothing uploaded"
+  exit 0
+fi
+
+bash "$RELEASE_SCRIPTS/r2.sh" push "$work" "$VERSION"
+bash "$RELEASE_SCRIPTS/r2.sh" verify "$work" "$NAME"
+
+summary "### Published to R2"
+summary "- Version: \`$VERSION\` (CFBundleVersion \`$BUILD_NUMBER\`)${CHANNEL:+, channel \`$CHANNEL\`}"
+summary "- Feed: \`$BASE/appcast.xml\`"
+log "release $VERSION published"
