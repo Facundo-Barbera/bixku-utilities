@@ -9,6 +9,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../../packages/BixkuCore"),
+        .package(path: "../../packages/BixkuDock"),
         // Auto-updates. EXACT pinned version: must match release/sparkle.version (checked by a test).
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1"),
     ],
@@ -17,12 +18,16 @@ let package = Package(
             name: "BixkuUtilities",
             dependencies: [
                 .product(name: "BixkuCore", package: "BixkuCore"),
+                .product(name: "BixkuDock", package: "BixkuDock"),
                 .product(name: "Sparkle", package: "Sparkle"),
             ]
         ),
         .testTarget(
             name: "BixkuUtilitiesTests",
-            dependencies: ["BixkuUtilities"]
+            dependencies: [
+                "BixkuUtilities",
+                .product(name: "BixkuDock", package: "BixkuDock"),
+            ]
         ),
     ]
 )
