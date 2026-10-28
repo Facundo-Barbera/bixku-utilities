@@ -20,8 +20,8 @@ name: Release Mac
 #  - DRY-RUN (workflow_dispatch with dry_run=true, the default): no credentials required. Ad-hoc signature, no
 #    notarization or stapling, unsigned DMG. If the R2 credentials exist it uploads ONLY under
 #    <UPDATES_BASE_URL>/test/<run_id>/ (and checks the production feed was not touched); otherwise it uploads
-#    nothing and attaches the generated test appcast as an artifact. Without the Sparkle key it signs the test
-#    feed with an ephemeral key. Never creates tags or GitHub Releases.
+#    nothing and attaches the generated test appcast as an artifact. Without the Sparkle key, the test app and
+#    its test feed use a throw-away key generated in the build job. Never creates tags or GitHub Releases.
 #  - Actions pinned by commit SHA (comment = version).
 on:
   push:
@@ -70,6 +70,7 @@ jobs:
     outputs:
       dry_run: ${{ steps.mode.outputs.dry_run }}
       r2_ready: ${{ steps.check.outputs.r2_ready || 'true' }}
+      sparkle_key_ready: ${{ steps.check.outputs.sparkle_key_ready || 'true' }}
       tag: ${{ steps.version.outputs.tag }}
       version: ${{ steps.version.outputs.short_version }}
       build_number: ${{ steps.version.outputs.build_number }}
@@ -148,6 +149,8 @@ jobs:
     env:
       DRY_RUN: ${{ needs.preflight.outputs.dry_run }}
       VERSION: ${{ needs.preflight.outputs.version }}
+      # Dry-run without the repository Sparkle key: a throw-away key pair signs the test app and its test feed
+      SPARKLE_EPHEMERAL: ${{ (needs.preflight.outputs.dry_run == 'true' && needs.preflight.outputs.sparkle_key_ready != 'true') && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -179,6 +182,27 @@ jobs:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
         run: bash apps/mac/release/keychain.sh setup
 
+      # generate_appcast only signs updates for apps that carry SUPublicEDKey, so the test app needs a key too.
+      # It protects nothing (test build, test feed) and is handed to `publish` as a 1-day artifact.
+      - name: Ephemeral Sparkle key (dry-run without the repository key)
+        if: env.SPARKLE_EPHEMERAL == 'true'
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/ephemeral-sparkle"
+          mkdir -p "$dir"
+          ( umask 077; python3 -I apps/mac/release/appcast.py gen-key > "$dir/keypair" )
+          echo "::add-mask::$(sed -n 1p "$dir/keypair")"
+          echo "EPHEMERAL_SPARKLE_PUBLIC_KEY=$(sed -n 2p "$dir/keypair")" >> "$GITHUB_ENV"
+
+      - name: Hand the ephemeral key to the publish job
+        if: env.SPARKLE_EPHEMERAL == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ephemeral-sparkle-key-${{ github.run_id }}
+          path: ${{ runner.temp }}/ephemeral-sparkle/keypair
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Assemble the app (with Sparkle)
         env:
           SHORT_VERSION: ${{ needs.preflight.outputs.version }}
@@ -186,8 +210,8 @@ jobs:
           RELEASE_MODE: ${{ env.DRY_RUN == 'true' && 'dryrun' || 'release' }}
           BUNDLE_ID: ${{ vars.BUNDLE_ID || 'online.bixku.utilities' }}
           # In a dry-run the app points at the TEST feed (test/<run_id>), never at production
-          UPDATES_BASE_URL: ${{ (env.DRY_RUN == 'true' && vars.UPDATES_BASE_URL != '') && format('{0}/test/{1}', vars.UPDATES_BASE_URL, github.run_id) || vars.UPDATES_BASE_URL }}
-          SPARKLE_ED_PUBLIC_KEY: ${{ vars.SPARKLE_ED_PUBLIC_KEY }}
+          UPDATES_BASE_URL: ${{ env.DRY_RUN == 'true' && format('{0}/test/{1}', vars.UPDATES_BASE_URL || 'https://updates.example.invalid/bixku-utilities', github.run_id) || vars.UPDATES_BASE_URL }}
+          SPARKLE_ED_PUBLIC_KEY: ${{ env.SPARKLE_EPHEMERAL == 'true' && env.EPHEMERAL_SPARKLE_PUBLIC_KEY || vars.SPARKLE_ED_PUBLIC_KEY }}
         run: APP_OUT="$APP_PATH" bash apps/mac/release/assemble-app.sh
 
       - name: Sign (hardened runtime, inside-out)
@@ -270,6 +294,7 @@ jobs:
       # write elsewhere), or offline (R2_OFFLINE=1) when the R2 credentials are not configured.
       R2_TEST_ONLY: ${{ needs.preflight.outputs.dry_run == 'true' && '1' || '0' }}
       R2_OFFLINE: ${{ (needs.preflight.outputs.dry_run == 'true' && needs.preflight.outputs.r2_ready != 'true') && '1' || '0' }}
+      SPARKLE_EPHEMERAL: ${{ (needs.preflight.outputs.dry_run == 'true' && needs.preflight.outputs.sparkle_key_ready != 'true') && 'true' || 'false' }}
       UPDATES_BASE_URL: ${{ needs.preflight.outputs.dry_run == 'true' && format('{0}/test/{1}', vars.UPDATES_BASE_URL || 'https://updates.example.invalid/bixku-utilities', github.run_id) || vars.UPDATES_BASE_URL }}
     steps:
       - name: Paths
@@ -285,6 +310,12 @@ jobs:
         with:
           name: bixku-utilities-mac-${{ needs.preflight.outputs.version }}
           path: ${{ runner.temp }}/dl
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: env.SPARKLE_EPHEMERAL == 'true'
+        with:
+          name: ephemeral-sparkle-key-${{ github.run_id }}
+          path: ${{ runner.temp }}/ephemeral-sparkle
 
       # Real release: without Developer ID signature + notarization the workflow ABORTS here.
       - name: Check the downloaded artifacts (checksums, signatures, tickets)
@@ -340,6 +371,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
+          SPARKLE_ED_KEYPAIR_FILE: ${{ env.SPARKLE_EPHEMERAL == 'true' && format('{0}/ephemeral-sparkle/keypair', runner.temp) || '' }}
           NOTES_MD_OUT: ${{ runner.temp }}/release-notes.md
           APPCAST_OUT: ${{ runner.temp }}/test-feed
         run: bash apps/mac/release/publish.sh "$DL/BixkuUtilities-${VERSION}.zip"
@@ -390,4 +422,4 @@ jobs:
       # Always: the Sparkle key only exists as a 0600 temp file inside appcast.sh; remove it if anything left it
       - name: Delete temporary keys
         if: always()
-        run: rm -f "$RUNNER_TEMP"/bixku-sparkle-key-* "$RUNNER_TEMP"/bixku-notary-*
+        run: rm -rf "$RUNNER_TEMP"/bixku-sparkle-key-* "$RUNNER_TEMP"/bixku-notary-* "$RUNNER_TEMP/ephemeral-sparkle"

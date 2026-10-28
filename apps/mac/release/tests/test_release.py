@@ -700,6 +700,23 @@ class PublishTests(ScriptCase):
         self.assertTrue(os.path.isfile(os.path.join(out, "appcast.xml")))
         self.assertFalse([c for c in self.calls() if c.startswith(("aws", "curl"))])
 
+    def test_dry_run_uses_the_build_job_keypair(self):
+        keypair = os.path.join(self.tmp, "keypair")
+        with open(keypair, "w") as f:
+            f.write(PRIV_B64 + "\n" + PUB_B64 + "\n")
+        out = os.path.join(self.tmp, "test-feed")
+        env = {"SPARKLE_BIN": self.bin, "VERSION": "0.0.0-dryrun", "BUILD_NUMBER": "1", "DRY_RUN": "true",
+               "R2_OFFLINE": "1", "UPDATES_BASE_URL": "https://updates.example.invalid/my-app/test/9",
+               "APPCAST_OUT": out, "SPARKLE_ED_KEYPAIR_FILE": keypair}
+        p = self.run_script("publish.sh", self.zip("0.0.0-dryrun"), env=env)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("::add-mask::" + PRIV_B64, p.stdout)
+        item = appcast.load_items(os.path.join(out, "appcast.xml"))[0]
+        with open(self.zip("0.0.0-dryrun"), "rb") as f:
+            self.assertTrue(appcast.ed25519_verify(base64.b64decode(PUB_B64), f.read(), base64.b64decode(item["sig"])))
+        real = self.publish_env("1.0.0", "1", SPARKLE_ED_KEYPAIR_FILE=keypair)
+        self.assertNotEqual(self.run_script("publish.sh", self.zip("1.0.0"), env=real).returncode, 0)
+
     def test_dry_run_guard(self):
         env = self.r2_env(test_only="1")  # production URL with the test guard on
         p = self.run_script("r2.sh", "ls", env=env)
