@@ -4,9 +4,8 @@ import BixkuCore
 enum KnownModules {
     @MainActor
     static func all() -> [ModuleRegistration] {
-        let hello = HelloModule()
-        return [
-            ModuleRegistration(module: hello, ui: HelloModuleUI(module: hello)),
+        [
+            DockModule.makeRegistration(),
         ]
     }
 }
