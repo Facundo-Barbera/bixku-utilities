@@ -203,6 +203,20 @@ final class DockModuleTests: XCTestCase {
         await registry.stopAll()
     }
 
+    func testExampleConfigFileIsUnderstood() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let file = repoRoot.appendingPathComponent("config.example.toml")
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: file.path), "example config not found")
+        let config = try StaticConfigProvider(contentsOf: file)
+        let parsed = DockConfiguration(config: config.scoped(to: "modules.dock"), llmConfig: config.scoped(to: "llm"))
+        XCTAssertEqual(parsed.defaultMode, .writing)
+        XCTAssertNotNil(DefaultModes.definition(parsed.defaultMode))
+        XCTAssertEqual(parsed.redactedApps, ["com.example.PasswordManager"])
+        XCTAssertEqual(parsed.llm.timeout, .seconds(20))
+    }
+
     func testConfigurationParsing() throws {
         let config = try StaticConfigProvider(toml: """
         [modules.dock]

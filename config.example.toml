@@ -23,15 +23,25 @@ max_tokens = 1024
 
 [modules.dock]
 enabled = true
+# Store user modes as JSON files here (optional; by default they live in the
+# module's own storage inside the app's data directory).
 modes_dir = "~/Library/Application Support/BixkuUtilities/dock/modes"
 default_mode = "writing"
 # How often (seconds) the active app/window is sampled for classification.
 activity_sample_interval = 2.0
-# Notifications are classified and acted on by the mode agent.
+# Let the LLM decide notifications that no mode rule covers.
 classify_notifications = true
+# Ask the LLM only when the rule-based classifier is less confident than this.
+llm_confidence_threshold = 0.6
+llm_max_requests_per_minute = 12
+# Activity must hold this long (minus short interruptions) to switch modes;
+# see docs/dock.md for every tunable.
+transition_grace_seconds = 30
+minimum_mode_dwell_seconds = 60
 
 [modules.dock.privacy]
-# Never send window titles from these apps to the LLM.
+# Drop window titles, URLs and documents of these apps (bundle id patterns,
+# `com.example.*` allowed) before classification, the LLM or the event bus.
 redact_window_titles_for = ["com.example.PasswordManager"]
 
 [modules.lintel]
