@@ -268,5 +268,5 @@ bash apps/mac/release/dmg.sh "apps/mac/build/release/Bixku Utilities.app" apps/m
 ## Known gaps
 
 - `apps/mac/Package.resolved` is not committed (Sparkle is pinned with `exact:`). Run `swift package resolve` on a Mac and commit it to also pin the git revision.
-- The app has no icon yet (`apps/mac/Resources/AppIcon.icns` or `AppIcon.iconset` is picked up automatically when added).
+- The app icon is provisional (logo proposal A). `assemble-app.sh` bundles `apps/mac/Resources/AppIcon.icns` and sets `CFBundleIconFile`; regenerate it from another logo with `scripts/make-icon.sh <logo.svg>` (see `design/logo-proposals/README.md`).
 - The DMG layout uses Finder scripting on the runner; it degrades gracefully as described above.

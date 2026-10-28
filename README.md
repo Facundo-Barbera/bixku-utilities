@@ -31,9 +31,9 @@ packages/            Portable SwiftPM packages (Foundation only; build on Linux 
   BixkuCore/         Module system: protocol, registry, event bus, storage, config
   BixkuDock/         Dock engine          (planned)
   BixkuModeAgent/    Mode agent           (planned)
-scripts/             Dev tooling (secret scanning, git hooks, test runner)
+scripts/             Dev tooling (secret scanning, git hooks, test runner, app icon generator)
 docs/                Architecture and release notes
-design/              Logo proposals and design assets
+design/              Logo proposals and design assets (source SVGs for the app icon)
 .github/workflows/   CI and release automation
 config.example.toml  Example configuration (copy to config.local.toml)
 ```
@@ -51,6 +51,17 @@ scripts/test-packages.sh
 # Build the app (macOS only)
 cd apps/mac && swift build
 ```
+
+### App icon
+
+The icon is provisional: proposal A (`design/logo-proposals/logo-a.svg`). Regenerate it from any SVG with:
+
+```sh
+scripts/make-icon.sh                                    # proposal A
+scripts/make-icon.sh design/logo-proposals/logo-c.svg   # another logo
+```
+
+This rewrites `apps/mac/Resources/AppIcon.icns` (bundled by `apps/mac/release/assemble-app.sh`) and `apps/mac/Resources/Assets.xcassets/AppIcon.appiconset` (for Xcode projects). It needs an SVG renderer (`rsvg-convert`, `resvg`, Inkscape, ImageMagick, or just `uv`) and `python3`; no sudo. Commit the regenerated files. Test: `scripts/tests/test-make-icon.sh`.
 
 ### Configuration
 

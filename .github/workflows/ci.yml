@@ -36,6 +36,16 @@ jobs:
         working-directory: apps/mac
         run: swift test
 
+  icon:
+    name: App icon pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install an SVG renderer
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends librsvg2-bin
+      - name: Test scripts/make-icon.sh
+        run: scripts/tests/test-make-icon.sh
+
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest

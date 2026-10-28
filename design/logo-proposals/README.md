@@ -51,5 +51,7 @@ A 2×2 grid of tiles, one of them lit with a focus dot: a suite of modules
 
 - The SVGs are the source of truth. The PNGs (1024×1024, RGBA) were rendered
   from them with [resvg](https://github.com/RazrFalcon/resvg).
-- On macOS, `iconutil` or `sips` can turn a PNG into an `.icns` / asset catalog
-  once a proposal is chosen.
+- The app icon is built from an SVG with `scripts/make-icon.sh <logo.svg>`
+  (`AppIcon.iconset`, `AppIcon.icns` and an asset-catalog `AppIcon.appiconset`).
+  Proposal A is the provisional icon; pass another SVG to switch. `iconutil`
+  is used on macOS, a Python writer (`scripts/icon-tools.py`) elsewhere.
