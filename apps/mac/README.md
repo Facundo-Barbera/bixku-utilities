@@ -12,6 +12,7 @@ swift build        # macOS only
   - `Modules/<Name>/` — per-module SwiftUI providers (`Hello` is an example module, to be replaced by Dock).
 - `Resources/Info.plist` — bundle metadata template (`$(…)` placeholders are filled at packaging time).
 - `Resources/BixkuUtilities.entitlements` — hardened-runtime entitlements (not sandboxed yet).
-- `release/` — release scripts (added later).
+- `Sources/BixkuUtilities/Updates/` — Sparkle auto-updates ("Check for Updates…" in the menu-bar menu; disabled in local builds).
+- `release/` — release pipeline scripts: assemble, sign, notarize, DMG, Sparkle feed in R2. See [`docs/release.md`](../../docs/release.md).
 
 The app cannot be built on Linux; CI builds it on macOS.
