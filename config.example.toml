@@ -14,8 +14,12 @@ log_level = "info"            # trace | debug | info | warn | error
 provider = "anthropic"        # anthropic | openai-compatible | none
 model = "your-model-id"       # e.g. a small, fast model for real-time classification
 base_url = ""                 # only for "openai-compatible" providers
-api_key_env = "BIXKU_LLM_API_KEY"   # name of the env var that holds the key
+api_key_env = "BIXKU_LLM_API_KEY"   # NAME of the env var that holds the key (never the key itself)
+# Alternative: read the key from a macOS Keychain generic-password item instead.
+# api_key_keychain_service = "bixku-utilities"
+# api_key_keychain_account = "llm"
 request_timeout_seconds = 20
+max_tokens = 1024
 
 [modules.dock]
 enabled = true
