@@ -7,6 +7,9 @@
       for now: the Dock module needs to observe other apps' activity and
       notifications, which the App Sandbox does not allow. Revisit before any
       Mac App Store distribution (Developer ID + notarization is the plan).
+
+      The Accessibility permission (window titles for the Dock activity monitor) is a runtime
+      TCC grant: it needs no entitlement and no Info.plist key. See apps/mac/README.md.
     -->
     <key>com.apple.security.network.client</key>
     <true/>
