@@ -21,13 +21,15 @@ tags = ["personal"]
 [[rules]]
 id = "linux-home-path"
 description = "Absolute Linux user home paths"
-regex = '''/hom[e]/[A-Za-z_][A-Za-z0-9._-]*'''
+regex = '''/hom[e]/([A-Za-z_][A-Za-z0-9._-]*)'''
+secretGroup = 1
 tags = ["personal"]
 
 [[rules]]
 id = "macos-user-path"
 description = "Absolute macOS user home paths"
-regex = '''/User[s]/[A-Za-z0-9._-]+'''
+regex = '''/User[s]/([A-Za-z0-9._-]+)'''
+secretGroup = 1
 tags = ["personal"]
 
 [[rules]]

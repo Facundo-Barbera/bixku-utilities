@@ -90,15 +90,15 @@ scan_with_gitleaks() {
   trap 'rm -rf "$snap"' RETURN
   snapshot_tree "$snap"
   if [ "${sub_dir[0]}" = dir ]; then
-    gitleaks dir "$snap" --config "$CONFIG" --redact --no-banner || rc=1
+    gitleaks dir "$snap" --config "$CONFIG" --redact --no-banner --verbose || rc=1
   else
-    gitleaks "${sub_dir[@]}" "$snap" --config "$CONFIG" --redact --no-banner || rc=1
+    gitleaks "${sub_dir[@]}" "$snap" --config "$CONFIG" --redact --no-banner --verbose || rc=1
   fi
 
   if has_commits; then
     local range; range="$(history_range)"
     echo "== gitleaks: history ($range) =="
-    gitleaks "${sub_git[@]}" --config "$CONFIG" --redact --no-banner --log-opts="$range" || rc=1
+    gitleaks "${sub_git[@]}" --config "$CONFIG" --redact --no-banner --verbose --log-opts="$range" || rc=1
   fi
   return $rc
 }
