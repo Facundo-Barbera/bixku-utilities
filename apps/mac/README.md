@@ -7,6 +7,9 @@ swift build        # macOS only
 ```
 
 - `Sources/BixkuUtilities/` — app entry point and UI.
+  - `Host/` — `ModuleHost` (registers, starts and observes modules), `ModuleUIProvider`, `KnownModules` (the list of shipped modules).
+  - `Views/` — menu-bar panel, settings window (module list + details), module window.
+  - `Modules/<Name>/` — per-module SwiftUI providers (`Hello` is an example module, to be replaced by Dock).
 - `Resources/Info.plist` — bundle metadata template (`$(…)` placeholders are filled at packaging time).
 - `Resources/BixkuUtilities.entitlements` — hardened-runtime entitlements (not sandboxed yet).
 - `release/` — release scripts (added later).
