@@ -31,7 +31,7 @@ fi
 if [ -z "$source_used" ]; then
   prev="$(git -C "$REPO_ROOT" describe --tags --abbrev=0 --match 'v*' "$TAG^" 2>/dev/null || true)"
   range="${prev:+$prev..}$TAG"
-  { echo "## Changes"; git -C "$REPO_ROOT" log --no-merges --max-count=50 --pretty='- %s' "$range"; } > "$MD"
+  { echo "## Changes"; git -C "$REPO_ROOT" log --no-merges --max-count=50 --pretty='- %s' "$range" 2>/dev/null || echo "- $APP_NAME $VERSION"; } > "$MD"
   source_used="commits${prev:+ since $prev}"
 fi
 
