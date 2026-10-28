@@ -31,5 +31,25 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Facundo Barbera. MIT License.</string>
+    <!--
+      Sparkle auto-updates. Filled in by apps/mac/release/render-plist.py at packaging time
+      (UPDATES_BASE_URL and SPARKLE_ED_PUBLIC_KEY come from GitHub variables). When either is
+      missing (local builds) every SU* key is removed and the updater stays disabled.
+      SUScheduledCheckInterval and SUAutomaticallyUpdate are converted to integer/bool.
+    -->
+    <key>SUFeedURL</key>
+    <string>$(UPDATES_BASE_URL)/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>$(SPARKLE_ED_PUBLIC_KEY)</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUScheduledCheckInterval</key>
+    <string>$(SPARKLE_CHECK_INTERVAL)</string>
+    <key>SUAutomaticallyUpdate</key>
+    <string>$(SPARKLE_AUTO_UPDATE)</string>
+    <key>SURequireSignedFeed</key>
+    <true/>
+    <key>SUVerifyUpdateBeforeExtraction</key>
+    <true/>
 </dict>
 </plist>
