@@ -124,6 +124,7 @@ final class NotificationTriageTests: XCTestCase {
     func testLLMFailureKeepsTheDefault() async {
         let clock = ManualClock(now: t0)
         let triage = NotificationTriage(llm: MockLLM.hanging, policy: LLMUsagePolicy(timeout: .seconds(2)), clock: clock)
+        let writing = self.writing
         let task = Task { await triage.triage(notification("com.example.App"), mode: writing, activity: nil) }
         await eventually { clock.sleeperCount > 0 }
         clock.advance(by: .seconds(2))
