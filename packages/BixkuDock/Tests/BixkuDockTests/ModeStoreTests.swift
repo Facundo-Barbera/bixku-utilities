@@ -125,7 +125,7 @@ final class ModeStoreTests: XCTestCase {
         let store = JSONModeStore(backend: StorageModeBackend(storage: storage))
         try await store.save(makeMode("focus"))
         try await storage.setValue(["unrelated": true], forKey: "settings-cache")
-        let keys = try await storage.keys()
+        let keys = await storage.keys()
         XCTAssertEqual(keys, ["mode.focus", "settings-cache"])
         let catalog = try await store.load()
         XCTAssertEqual(catalog.mode("focus")?.provenance, .user)
