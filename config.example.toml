@@ -1,0 +1,34 @@
+# Bixku Utilities — example configuration.
+#
+# Copy this file to `config.local.toml` (which is gitignored) and edit it.
+# Never put real API keys in this file: reference them through an environment
+# variable or the macOS Keychain instead.
+
+[general]
+# Where the app stores its own state (modes, logs, caches).
+data_dir = "~/Library/Application Support/BixkuUtilities"
+log_level = "info"            # trace | debug | info | warn | error
+
+[llm]
+# Provider used by modules that need a language model (e.g. the Dock classifier).
+provider = "anthropic"        # anthropic | openai-compatible | none
+model = "your-model-id"       # e.g. a small, fast model for real-time classification
+base_url = ""                 # only for "openai-compatible" providers
+api_key_env = "BIXKU_LLM_API_KEY"   # name of the env var that holds the key
+request_timeout_seconds = 20
+
+[modules.dock]
+enabled = true
+modes_dir = "~/Library/Application Support/BixkuUtilities/dock/modes"
+default_mode = "writing"
+# How often (seconds) the active app/window is sampled for classification.
+activity_sample_interval = 2.0
+# Notifications are classified and acted on by the mode agent.
+classify_notifications = true
+
+[modules.dock.privacy]
+# Never send window titles from these apps to the LLM.
+redact_window_titles_for = ["com.example.PasswordManager"]
+
+[modules.lintel]
+enabled = false
