@@ -10,7 +10,7 @@ swift build        # macOS only
   - `Host/` — `ModuleHost` (registers, starts and observes modules), `ModuleUIProvider`, `KnownModules` (the list of shipped modules).
   - `Views/` — menu-bar panel, settings window (module list + details), module window.
   - `Modules/<Name>/` — per-module SwiftUI providers (`Hello` is an example module, no longer registered).
-  - `Dock/` — the Dock module shell (`DockModule`) and `Dock/UI/`: the menu-bar panel (`DockPanelView`), the opt-in floating dock (`FloatingDockController`, off by default), `DockViewModel` and the `DockStateProviding` protocol the UI reads from (`PreviewDockState` serves sample data until the engine is wired in).
+  - `Dock/` — `DockHostModule` (the `BixkuDock` module plus the link to its UI) and `Dock/UI/`: the menu-bar panel (`DockPanelView`), the opt-in floating dock (`FloatingDockController`, off by default), `DockViewModel`, and the `DockStateProviding` protocol the UI reads from (`DockEngineState` adapts the engine; `PreviewDockState` serves sample data for previews).
 - `Resources/Info.plist` — bundle metadata template (`$(…)` placeholders are filled at packaging time).
 - `Resources/BixkuUtilities.entitlements` — hardened-runtime entitlements (not sandboxed yet).
 - `Sources/BixkuUtilities/Updates/` — Sparkle auto-updates ("Check for Updates…" in the menu-bar menu; disabled in local builds).

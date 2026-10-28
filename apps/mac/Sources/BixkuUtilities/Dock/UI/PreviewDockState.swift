@@ -31,6 +31,13 @@ actor PreviewDockState: DockStateProviding {
         guard snapshot.catalog.contains(id), id != snapshot.activeModeID else { return }
         snapshot.activeModeID = id
         snapshot.modeStartedAt = Date()
+        snapshot.isManual = true
+        publish()
+    }
+
+    func resumeAutomatic() {
+        guard snapshot.isManual else { return }
+        snapshot.isManual = false
         publish()
     }
 
@@ -55,23 +62,17 @@ actor PreviewDockState: DockStateProviding {
     }
 
     private static func sample(now: Date) -> DockSnapshot {
-        let sample = ActivitySample(
-            appBundleID: "com.apple.dt.Xcode",
-            appName: "Xcode",
-            windowTitle: "DockPanelView.swift",
-            timestamp: now
-        )
-        let verdict = ActivityVerdict(
-            category: .code,
-            confidence: 0.92,
-            suggestedMode: .building,
-            rationale: "An IDE is in the foreground.",
-            source: .rules
-        )
         return DockSnapshot(
             activeModeID: .writing,
             modeStartedAt: now.addingTimeInterval(-25 * 60),
-            activity: ClassifiedActivity(sample: sample, verdict: verdict),
+            activity: DockActivity(
+                appName: "Xcode",
+                windowTitle: "DockPanelView.swift",
+                category: .code,
+                confidence: 0.92,
+                rationale: "An IDE is in the foreground.",
+                attention: .distraction
+            ),
             suggestedModeID: .building,
             held: [
                 triaged("Alex", app: "Messages", bundleID: "com.apple.MobileSMS", category: .directMessage, action: .hold, now: now, age: 240),

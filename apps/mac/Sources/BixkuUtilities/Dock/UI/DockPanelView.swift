@@ -10,7 +10,12 @@ struct DockPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ActiveModeHeader(mode: viewModel.activeMode, since: viewModel.snapshot.modeStartedAt)
+            ActiveModeHeader(
+                mode: viewModel.activeMode,
+                since: viewModel.snapshot.modeStartedAt,
+                isManual: viewModel.snapshot.isManual,
+                onResumeAutomatic: viewModel.resumeAutomatic
+            )
             ModePicker(viewModel: viewModel)
             if let suggested = viewModel.snapshot.suggestedMode {
                 SuggestionRow(mode: suggested) {
@@ -40,6 +45,8 @@ struct DockPanelView: View {
 private struct ActiveModeHeader: View {
     let mode: Mode?
     let since: Date?
+    let isManual: Bool
+    let onResumeAutomatic: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -54,6 +61,12 @@ private struct ActiveModeHeader: View {
                         Text(since, style: .relative)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if isManual {
+                        Button("Auto", action: onResumeAutomatic)
+                            .controlSize(.mini)
+                            .help("Chosen manually. Resume automatic mode switching.")
                     }
                 }
                 if let summary = mode?.summary, !summary.isEmpty {
@@ -145,7 +158,16 @@ private struct SuggestionRow: View {
 // MARK: - Activity
 
 private struct ActivitySection: View {
-    let activity: ClassifiedActivity?
+    let activity: DockActivity?
+
+    private static func statusText(for activity: DockActivity) -> String {
+        if activity.isIdle { return "Idle" }
+        switch activity.attention {
+        case .focus: return "On task"
+        case .neutral: return "Neutral"
+        case .distraction: return "Distraction"
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -153,31 +175,34 @@ private struct ActivitySection: View {
                 .font(.subheadline.weight(.semibold))
             if let activity {
                 HStack {
-                    Text(activity.sample.appName ?? activity.sample.appBundleID ?? "Unknown app")
+                    Text(activity.appName ?? "Unknown app")
                         .lineLimit(1)
                     Spacer()
-                    Text(activity.verdict.category.rawValue.capitalized)
+                    Text(activity.category.rawValue.capitalized)
                         .font(.caption)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Capsule().fill(Color.secondary.opacity(0.15)))
                 }
-                if let title = activity.sample.windowTitle, !title.isEmpty {
+                if let title = activity.windowTitle, !title.isEmpty {
                     Text(title)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 HStack(spacing: 6) {
-                    ProgressView(value: activity.verdict.confidence)
+                    ProgressView(value: activity.confidence)
                         .controlSize(.small)
-                    Text("\(Int((activity.verdict.confidence * 100).rounded()))%")
+                    Text("\(Int((activity.confidence * 100).rounded()))%")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
-                .help("Classifier confidence (\(activity.verdict.source.rawValue))")
-                if !activity.verdict.rationale.isEmpty {
-                    Text(activity.verdict.rationale)
+                .help("Classifier confidence (\(activity.source.rawValue))")
+                Text(Self.statusText(for: activity))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if !activity.rationale.isEmpty {
+                    Text(activity.rationale)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -252,5 +277,21 @@ private struct HeldNotificationRow: View {
             .help("Release now: \(item.decision.reason)")
             .accessibilityLabel("Release notification")
         }
+    }
+}
+
+// MARK: - Previews
+
+struct DockPanelView_Previews: PreviewProvider {
+    static var previews: some View {
+        let viewModel = DockViewModel(preferences: PreviewPreferences())
+        DockPanelView(viewModel: viewModel)
+            .padding(12)
+            .frame(width: 320)
+            .task { viewModel.start(provider: PreviewDockState()) }
+    }
+
+    private final class PreviewPreferences: DockPreferences {
+        var floatingDockEnabled = false
     }
 }

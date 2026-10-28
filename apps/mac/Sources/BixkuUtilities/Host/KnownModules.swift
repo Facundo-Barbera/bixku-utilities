@@ -5,7 +5,7 @@ enum KnownModules {
     @MainActor
     static func all() -> [ModuleRegistration] {
         [
-            DockModule.makeRegistration(),
+            DockHostModule.makeRegistration(),
         ]
     }
 }

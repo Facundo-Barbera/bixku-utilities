@@ -65,17 +65,15 @@ final class DockViewModel: ObservableObject {
         }
     }
 
-    private let provider: any DockStateProviding
+    private var provider: (any DockStateProviding)?
     private let preferences: any DockPreferences
     private let resolveApp: (String) -> DockAppItem?
     private var observation: Task<Void, Never>?
 
     init(
-        provider: any DockStateProviding,
         preferences: any DockPreferences = UserDefaultsDockPreferences(),
         resolveApp: @escaping (String) -> DockAppItem? = DockAppResolver.resolve
     ) {
-        self.provider = provider
         self.preferences = preferences
         self.resolveApp = resolveApp
         isFloatingDockEnabled = preferences.floatingDockEnabled
@@ -87,11 +85,13 @@ final class DockViewModel: ObservableObject {
 
     // MARK: Lifecycle
 
-    /// Starts following the provider. Idempotent.
-    func start() {
-        guard observation == nil else { return }
+    /// Starts following `provider`, replacing the previous one (the engine is
+    /// recreated every time the module starts).
+    func start(provider: any DockStateProviding) {
+        observation?.cancel()
+        self.provider = provider
         isRunning = true
-        observation = Task { [weak self, provider] in
+        observation = Task { [weak self] in
             let stream = await provider.snapshots()
             for await snapshot in stream {
                 guard let self else { return }
@@ -103,6 +103,7 @@ final class DockViewModel: ObservableObject {
     func stop() {
         observation?.cancel()
         observation = nil
+        provider = nil
         isRunning = false
     }
 
@@ -125,18 +126,19 @@ final class DockViewModel: ObservableObject {
     // MARK: Actions
 
     func select(_ id: ModeID) {
-        let provider = provider
-        Task { await provider.selectMode(id) }
+        perform { await $0.selectMode(id) }
+    }
+
+    func resumeAutomatic() {
+        perform { await $0.resumeAutomatic() }
     }
 
     func release(_ id: UUID) {
-        let provider = provider
-        Task { await provider.releaseNotification(id) }
+        perform { await $0.releaseNotification(id) }
     }
 
     func deliverDigest() {
-        let provider = provider
-        Task { await provider.deliverDigest() }
+        perform { await $0.deliverDigest() }
     }
 
     func open(_ app: DockAppItem) {
@@ -144,6 +146,11 @@ final class DockViewModel: ObservableObject {
     }
 
     // MARK: Private
+
+    private func perform(_ action: @escaping @Sendable (any DockStateProviding) async -> Void) {
+        guard let provider else { return }
+        Task { await action(provider) }
+    }
 
     private func apply(_ snapshot: DockSnapshot) {
         let previousMode = self.snapshot.activeMode?.definition.dock.prioritized
