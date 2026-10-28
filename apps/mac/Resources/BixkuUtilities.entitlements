@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+      Hardened-runtime friendly and intentionally minimal. The app is NOT sandboxed
+      for now: the Dock module needs to observe other apps' activity and
+      notifications, which the App Sandbox does not allow. Revisit before any
+      Mac App Store distribution (Developer ID + notarization is the plan).
+    -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+</dict>
+</plist>
