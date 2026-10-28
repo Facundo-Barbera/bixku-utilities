@@ -11,12 +11,24 @@ Small, modular macOS utilities that live in your menu bar. Each utility is a **m
 | **Dock** | in progress | An AI-native dock with custom modes (writing, building, …) to help you stay focused. An LLM classifies your activity (active app/window) and notifications in real time and acts on them; an agent can tune a mode's behavior and create new modes. |
 | **Lintel** | planned | Second module — not started yet. |
 
+## Architecture
+
+The app is a thin host around a module system defined in the portable `BixkuCore` package:
+
+- **`BixkuModule`** — the contract every utility implements: a manifest (id, version, capabilities, required permissions, dependencies, UI descriptors) and an async `start(context:)` / `stop()` lifecycle.
+- **`ModuleRegistry`** — registers modules, starts them in dependency order (detecting missing dependencies and cycles) and tracks their state.
+- **`EventBus`** — typed, `AsyncStream`-based publish/subscribe between modules (`activity.changed`, `notification.received`, `mode.changed`, …).
+- **`ModuleContext`** — everything a module gets injected: event bus, private storage, observable settings, read-only config, logger and clock. No globals.
+- **`ModuleHost`** (in `apps/mac`) — registers the known modules, drives their lifecycle and renders their menu-bar panels and settings pages.
+
+See **[docs/architecture.md](docs/architecture.md)** for diagrams, the lifecycle, events, persistence, security, and a step-by-step guide to adding a module.
+
 ## Repository layout
 
 ```
 apps/mac/            SwiftUI menu-bar app (SwiftPM), consumes the packages below
 packages/            Portable SwiftPM packages (Foundation only; build on Linux and macOS)
-  BixkuCore/         Module protocol and registry
+  BixkuCore/         Module system: protocol, registry, event bus, storage, config
   BixkuDock/         Dock engine          (planned)
   BixkuModeAgent/    Mode agent           (planned)
 scripts/             Dev tooling (secret scanning, git hooks, test runner)
@@ -47,7 +59,7 @@ cp config.example.toml config.local.toml
 $EDITOR config.local.toml
 ```
 
-`config.local.toml` is gitignored. Never put API keys in it directly — reference an environment variable (see `api_key_env`) or the Keychain.
+`config.local.toml` is gitignored. The app reads `config.toml` from its Application Support folder, or the file named by the `BIXKU_CONFIG` environment variable (e.g. `BIXKU_CONFIG=$PWD/config.local.toml`). Never put API keys in it directly — reference an environment variable (see `api_key_env`) or the Keychain.
 
 ### Security tooling
 
