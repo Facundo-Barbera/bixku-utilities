@@ -45,6 +45,7 @@ public final class DockModule: BixkuModule, @unchecked Sendable {
         var classifier: HybridClassifier
         var triage: NotificationTriage
         var watcher: Task<Void, Never>
+        var commands: Task<Void, Never>
     }
 
     private let activitySource: (any ActivitySource)?
@@ -125,7 +126,17 @@ public final class DockModule: BixkuModule, @unchecked Sendable {
                 await engine?.updateCatalog(catalog)
             }
         }
-        running.withLock { $0 = Running(engine: engine, store: store, classifier: classifier, triage: triage, watcher: watcher) }
+        let commandStream = context.subscribe(to: DockCommand.self, buffering: .unbounded)
+        let commands = Task { [weak self] in
+            for await envelope in commandStream {
+                guard let self else { return }
+                let result = await self.execute(envelope.payload, engine: engine, store: store)
+                context.publish(result)
+            }
+        }
+        running.withLock {
+            $0 = Running(engine: engine, store: store, classifier: classifier, triage: triage, watcher: watcher, commands: commands)
+        }
         context.logger.info("Dock started in mode '\(engine.state.mode.modeID)' with \(catalog.modes.count) modes")
     }
 
@@ -135,6 +146,7 @@ public final class DockModule: BixkuModule, @unchecked Sendable {
             return state
         }) else { return }
         current.watcher.cancel()
+        current.commands.cancel()
         await current.engine.stop()
         await activitySource?.stop()
         await notificationSource?.stop()
@@ -151,16 +163,36 @@ public final class DockModule: BixkuModule, @unchecked Sendable {
         await current.triage.setLLM(useForNotifications ? notifications : nil)
     }
 
-    /// Saves a mode through the store; the running engine picks it up.
+    /// Saves a mode through the store; the engine uses it as soon as this returns.
     public func saveMode(_ definition: ModeDefinition) async throws {
-        guard let store = modeStore else { throw DockModuleError.notRunning }
-        try await store.save(definition)
+        guard let current = running.withLock({ $0 }) else { throw DockModuleError.notRunning }
+        try await current.store.save(definition)
+        await current.engine.updateCatalog(try await current.store.load())
     }
 
     /// Deletes a user mode (or override) through the store.
     public func deleteMode(_ id: ModeID) async throws {
-        guard let store = modeStore else { throw DockModuleError.notRunning }
-        try await store.delete(id)
+        guard let current = running.withLock({ $0 }) else { throw DockModuleError.notRunning }
+        try await current.store.delete(id)
+        await current.engine.updateCatalog(try await current.store.load())
+    }
+
+    func execute(_ command: DockCommand, engine: DockEngine, store: any ModeStore) async -> DockCommandResult {
+        do {
+            switch command.action {
+            case .activateMode(let id, let reason):
+                try await engine.activateMode(id, reason: reason)
+            case .saveMode(let definition):
+                try await store.save(definition)
+                await engine.updateCatalog(try await store.load())
+            case .deleteMode(let id):
+                try await store.delete(id)
+                await engine.updateCatalog(try await store.load())
+            }
+            return DockCommandResult(commandID: command.id, succeeded: true)
+        } catch {
+            return DockCommandResult(commandID: command.id, succeeded: false, message: String(describing: error))
+        }
     }
 
     // MARK: Helpers

@@ -268,6 +268,27 @@ final class DockEngineTests: XCTestCase {
         }
     }
 
+    func testAgentActivationRespectsTheUsersManualChoice() async throws {
+        let engine = makeEngine()
+        try await engine.activateMode(.reading, reason: "agent: long PDF")
+        XCTAssertEqual(engine.state.mode.modeID, .reading)
+        XCTAssertEqual(engine.state.mode.activation, .automatic(reason: "agent: long PDF"))
+        XCTAssertFalse(engine.state.isManual)
+
+        try await engine.setMode(.writing)
+        do {
+            try await engine.activateMode(.building, reason: "agent")
+            XCTFail("expected an error")
+        } catch {
+            XCTAssertEqual(error as? DockEngineError, .manualModeActive(.writing))
+        }
+        // An expired manual choice no longer blocks the agent.
+        try await engine.setMode(.writing, until: t0.addingTimeInterval(10))
+        clock.advance(by: .seconds(10))
+        try await engine.activateMode(.building, reason: "agent")
+        XCTAssertEqual(engine.state.mode.modeID, .building)
+    }
+
     // MARK: Catalog updates
 
     func testRemovingTheActiveModeFallsBackToDefault() async throws {

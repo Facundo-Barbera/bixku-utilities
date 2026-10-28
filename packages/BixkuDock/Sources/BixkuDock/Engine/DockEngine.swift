@@ -4,10 +4,13 @@ import Foundation
 /// Errors raised by ``DockEngine`` commands.
 public enum DockEngineError: Error, Equatable, Sendable, CustomStringConvertible {
     case unknownMode(ModeID)
+    /// The user chose the mode manually; only the user can change it.
+    case manualModeActive(ModeID)
 
     public var description: String {
         switch self {
         case .unknownMode(let id): return "No mode with id '\(id)'"
+        case .manualModeActive(let id): return "The user chose '\(id)' manually; it can only be changed by the user"
         }
     }
 }
@@ -342,6 +345,21 @@ public actor DockEngine {
             switchMode(to: id, activation: .manual(until: until), at: now)
         }
         refreshActivity(now: now)
+        publishState()
+    }
+
+    /// Switches mode on behalf of an automated actor (the mode agent). Unlike
+    /// ``setMode(_:until:)`` this does not pin the mode — transition rules keep
+    /// running — and it is refused while the user's manual choice is in effect.
+    public func activateMode(_ id: ModeID, reason: String) throws {
+        guard catalog.contains(id) else { throw DockEngineError.unknownMode(id) }
+        let now = now()
+        if case .manual(let until) = selection.activation, until.map({ now < $0 }) ?? true {
+            throw DockEngineError.manualModeActive(selection.modeID)
+        }
+        if id != selection.modeID {
+            switchMode(to: id, activation: .automatic(reason: reason), at: now)
+        }
         publishState()
     }
 

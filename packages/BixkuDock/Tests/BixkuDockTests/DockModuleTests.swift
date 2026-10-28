@@ -116,6 +116,37 @@ final class DockModuleTests: XCTestCase {
         await registry.stopAll()
     }
 
+    func testCommandsOverTheEventBus() async throws {
+        let clock = ManualClock(now: t0)
+        let env = try environment(clock: clock)
+        let module = DockModule(configuration: DockConfiguration(tickInterval: nil))
+        let registry = ModuleRegistry(environment: env)
+        try await registry.register(module)
+        try await registry.startAll()
+        let engine = try XCTUnwrap(module.engine)
+        let results = env.eventBus.subscribe(to: DockCommandResult.self)
+
+        let save = DockCommand(.saveMode(makeMode("focus")))
+        let invalid = DockCommand(.saveMode(makeMode("Not Valid")))
+        let activate = DockCommand(.activateMode("focus", reason: "agent: deadline"))
+        let delete = DockCommand(.deleteMode(.writing))
+        for command in [save, invalid, activate, delete] {
+            env.eventBus.publish(command, source: "online.bixku.mode-agent")
+        }
+        let received = await collect(results, count: 4).map(\.payload)
+        XCTAssertEqual(received.map(\.commandID), [save.id, invalid.id, activate.id, delete.id])
+        XCTAssertEqual(received.map(\.succeeded), [true, false, true, false])
+        XCTAssertTrue(received[1].message?.contains("'Not Valid' is not a valid mode id") == true)
+        XCTAssertEqual(received[3].message, ModeStoreError.cannotDeleteFactoryMode(.writing).description)
+        XCTAssertEqual(engine.state.mode.modeID, "focus")
+        XCTAssertEqual(engine.state.mode.activation, .automatic(reason: "agent: deadline"))
+
+        // Commands are JSON-codable (they may be logged or come from an LLM tool call).
+        let data = try JSONEncoder().encode(activate)
+        XCTAssertEqual(try JSONDecoder().decode(DockCommand.self, from: data), activate)
+        await registry.stopAll()
+    }
+
     func testModesDirectoryFromConfig() async throws {
         let root = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
