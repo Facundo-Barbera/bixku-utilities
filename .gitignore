@@ -1,0 +1,65 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# SwiftPM / Xcode
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+xcuserdata/
+*.xcuserstate
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+Packages/.build/
+
+# Local configuration and secrets (only config.example.* is versioned)
+config.local.*
+*.local.toml
+*.local.json
+*.local.plist
+.env
+.env.*
+!.env.example
+secrets/
+*.p12
+*.p8
+*.pem
+*.key
+*.cer
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+*.pfx
+
+# Build and release artifacts
+dist/
+build/
+out/
+*.app
+*.dmg
+*.pkg
+*.zip
+*.tar.gz
+*.xcarchive
+
+# Editors / tooling
+.idea/
+.vscode/
+*.swp
+*~
+.claude/
+.t3/
+
+# Logs
+*.log
