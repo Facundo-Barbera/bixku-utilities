@@ -11,6 +11,7 @@ let package = Package(
         .package(path: "../../packages/BixkuCore"),
         .package(path: "../../packages/BixkuDock"),
         .package(path: "../../packages/BixkuNotify"),
+        .package(path: "../../packages/BixkuDockSettings"),
         // Auto-updates. EXACT pinned version: must match release/sparkle.version (checked by a test).
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1"),
     ],
@@ -21,6 +22,7 @@ let package = Package(
                 .product(name: "BixkuCore", package: "BixkuCore"),
                 .product(name: "BixkuDock", package: "BixkuDock"),
                 .product(name: "BixkuNotify", package: "BixkuNotify"),
+                .product(name: "BixkuDockSettings", package: "BixkuDockSettings"),
                 .product(name: "Sparkle", package: "Sparkle"),
             ]
         ),

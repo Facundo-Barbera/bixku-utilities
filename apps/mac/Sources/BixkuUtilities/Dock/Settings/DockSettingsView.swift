@@ -5,8 +5,8 @@ import SwiftUI
 /// Settings of the Dock module: the mode editor and the permissions the Dock needs.
 ///
 /// Hand it the same `ModeEditing` the running Dock reads its modes from, so edits
-/// made here are picked up by the engine (`ModeStoreEditor(store:)` adapts any
-/// `ModeStore`).
+/// made here are picked up by the engine: `init(module:)` for the app's `DockModule`,
+/// or `ModeStoreEditor(store:)` for any `ModeStore`.
 @MainActor
 struct DockSettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
@@ -28,8 +28,9 @@ struct DockSettingsView: View {
 }
 
 extension DockSettingsView {
-    /// Settings backed by the mode documents in the app's Application Support
-    /// folder (derived at runtime; see `ModeLocations`).
+    /// Standalone settings (previews, or a Dock configured with `modes_dir` set to
+    /// this folder) backed by mode documents in the app's Application Support folder,
+    /// derived at runtime (see `ModeLocations`).
     init(dataDirectory: URL? = nil) {
         let directory = ModeLocations.modesDirectory(dataDirectory: dataDirectory)
         self.init(editing: ModeStoreEditor(store: JSONModeStore(directory: directory)))

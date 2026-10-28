@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import BixkuDockSettings
 import SwiftUI
 import UserNotifications
@@ -15,7 +14,7 @@ final class PermissionsModel: ObservableObject {
     }
 
     func refresh() async {
-        statuses[.accessibility] = AXIsProcessTrusted() ? .granted : .denied
+        statuses[.accessibility] = AccessibilityPermission.isTrusted ? .granted : .denied
         statuses[.notifications] = await notificationStatus()
     }
 
@@ -29,9 +28,7 @@ final class PermissionsModel: ObservableObject {
 
     /// Shows the system's Accessibility prompt (which links to System Settings).
     func requestAccessibility() {
-        // The value of `kAXTrustedCheckOptionPrompt`.
-        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
+        AccessibilityPermission.requestPrompt()
     }
 
     /// Asks for notification permission (only possible while the system has not asked yet).
