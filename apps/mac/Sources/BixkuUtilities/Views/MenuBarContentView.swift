@@ -43,6 +43,8 @@ struct MenuBarContentView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            CheckForUpdatesMenuItems(updater: UpdaterController.shared)
+
             HStack {
                 Button("Settings…") {
                     open(SceneID.settings)

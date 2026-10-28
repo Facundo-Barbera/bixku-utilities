@@ -11,6 +11,8 @@ enum SceneID {
 @main
 struct BixkuUtilitiesApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    /// Created at launch so Sparkle can run its scheduled checks (no-op in local builds).
+    @StateObject private var updater = UpdaterController.shared
 
     var body: some Scene {
         MenuBarExtra("Bixku Utilities", systemImage: "square.grid.2x2") {

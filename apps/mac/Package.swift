@@ -9,12 +9,15 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../../packages/BixkuCore"),
+        // Auto-updates. EXACT pinned version: must match release/sparkle.version (checked by a test).
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1"),
     ],
     targets: [
         .executableTarget(
             name: "BixkuUtilities",
             dependencies: [
                 .product(name: "BixkuCore", package: "BixkuCore"),
+                .product(name: "Sparkle", package: "Sparkle"),
             ]
         ),
     ]
