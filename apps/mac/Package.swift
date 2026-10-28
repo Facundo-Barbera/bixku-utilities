@@ -20,5 +20,9 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle"),
             ]
         ),
+        .testTarget(
+            name: "BixkuUtilitiesTests",
+            dependencies: ["BixkuUtilities"]
+        ),
     ]
 )

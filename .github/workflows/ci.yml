@@ -32,6 +32,9 @@ jobs:
       - name: Build app
         working-directory: apps/mac
         run: swift build
+      - name: Test app
+        working-directory: apps/mac
+        run: swift test
 
   secrets:
     name: Secret scan
