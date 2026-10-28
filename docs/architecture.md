@@ -10,7 +10,7 @@ Bixku Utilities is a macOS menu-bar app that hosts small utilities as **modules*
 - [Persistence and configuration](#persistence-and-configuration)
 - [Security and permissions](#security-and-permissions)
 - [Package conventions](#package-conventions)
-- [How the Dock module fits (planned)](#how-the-dock-module-fits-planned)
+- [How the Dock module fits](#how-the-dock-module-fits)
 - [How to add a new module (Lintel walkthrough)](#how-to-add-a-new-module-lintel-walkthrough)
 
 ## Overview
@@ -185,9 +185,9 @@ Shared vocabulary declared in BixkuCore (`Events/SharedEvents.swift`), so produc
 
 | Event | Payload | Producer | Typical consumers |
 | ----- | ------- | -------- | ----------------- |
-| `activity.changed` | `ActivityChanged` (app bundle id, app name, window title?, detail?) | Dock *(planned)* | Mode agent, Lintel |
-| `notification.received` | `NotificationReceived` (app, title, subtitle?, body?) | Dock *(planned)* | Mode agent |
-| `mode.changed` | `ModeChanged` (previous mode, new mode, reason) | Dock *(planned)* | Any module that adapts to the current mode |
+| `activity.changed` | `ActivityChanged` (app bundle id, app name, window title?, detail?, category?, confidence?) | Dock (`DockEngine`) | Mode agent, Lintel |
+| `notification.received` | `NotificationReceived` (app, title, subtitle?, body?) | Dock (`DockEngine`) | Mode agent |
+| `mode.changed` | `ModeChanged` (previous mode, new mode, reason) | Dock (`DockEngine`) | Any module that adapts to the current mode |
 | `module.state-changed` | `ModuleStateChanged` (module id, state) | `ModuleRegistry` | `ModuleHost` (UI) |
 
 ## Persistence and configuration
@@ -228,23 +228,23 @@ Storage keys are restricted to `[A-Za-z0-9][A-Za-z0-9._-]*` so they are always s
 - Packages depend on each other by relative path: `.package(path: "../BixkuCore")`. The app depends on them with `.package(path: "../../packages/<Name>")`.
 - Module ids: `online.bixku.<slug>`. Event namespaces: the module slug.
 
-## How the Dock module fits (planned)
+## How the Dock module fits
 
-The Dock is split across two packages that other work streams create; this section is their expected contract.
+The Dock engine is implemented in `packages/BixkuDock` (see **[dock.md](dock.md)** for the full design: modes, classification, transitions, triage, events and configuration). The mode agent and the macOS integration are separate work streams; this table is the contract between them.
 
-| | `BixkuDock` (`online.bixku.dock`) | `BixkuModeAgent` (`online.bixku.mode-agent`) |
+| | `BixkuDock` (`online.bixku.dock`) — implemented | `BixkuModeAgent` (`online.bixku.mode-agent`) — planned |
 | - | --- | --- |
-| Role | Mode engine: modes (writing, building, …), the current mode, rules about what is allowed in each mode, activity sampling and classification. | Agent that tunes mode behavior and creates new modes, using a language model. |
-| Depends on | BixkuCore | BixkuCore, `online.bixku.dock` (manifest dependency) |
+| Role | Mode engine: modes (writing, building, …) as validated, versioned JSON; the current mode (automatic rules + manual override); activity classification (rules + optional LLM); notification triage, held queue and digests. | Agent that tunes mode behavior and creates new modes, using a language model. |
+| Depends on | BixkuCore | BixkuCore, `BixkuDock` (types), `online.bixku.dock` (manifest dependency) |
 | Capabilities | `activity-monitoring`, `notification-processing`, `language-model`, `menu-bar`, `event-producer` | `language-model`, `network` |
 | Permissions | `accessibility`, `screen-recording`, `notifications` | `network` |
-| Publishes | `activity.changed`, `notification.received`, `mode.changed`, `dock.activity-classified`, `dock.mode-violation` *(names planned)* | `mode-agent.suggestion`, `mode-agent.mode-updated` *(names planned)* |
-| Consumes | `mode-agent.*` (apply mode changes) | `activity.changed`, `notification.received`, `mode.changed`, `dock.*` |
-| Storage | Modes as JSON documents (`modes/<id>`-style keys) | Agent memory / history |
-| Config | `[modules.dock]` (sample interval, default mode, privacy rules), `[llm]` | `[llm]` |
-| UI (apps/mac) | Menu-bar panel (current mode, switcher), settings (modes, privacy) | Settings (provider, review of agent changes) |
+| Publishes | `activity.changed`, `notification.received`, `mode.changed`, `notification.triaged`, `dock.activity-classified`, `dock.digest-ready`, `dock.command-result` | `mode-agent.*` *(names planned)*, `dock.command` |
+| Consumes | `dock.command` (`activateMode`, `saveMode`, `deleteMode`) | `activity.changed`, `notification.*`, `mode.changed`, `dock.*` |
+| Storage | Mode documents in module storage (`mode.<id>` keys) or `[modules.dock] modes_dir` | Agent memory / history |
+| Config | `[modules.dock]` (default mode, privacy, smoothing, transitions, LLM limits), `[llm] request_timeout_seconds` | `[llm]` |
+| UI (apps/mac) | Menu-bar panel (`panel`: current mode, switcher, held, digest), settings (`modes`) — to be built | Settings (provider, review of agent changes) |
 
-The OS-facing parts (NSWorkspace frontmost-app observation, AX window titles) live in `apps/mac` and are injected into `BixkuDock` through protocols, so the engine stays portable and testable. Once Dock exists it replaces the `Hello` example module in `KnownModules`.
+Injection points (all protocols in `BixkuDock`): the app provides `ActivitySource` / `NotificationSource` (NSWorkspace, Accessibility, idle time); the LLM provider implements `LLMClassifying`, `LLMNotificationTriaging` and `DigestSummarizing` and is passed to `DockModule` (at init or with `setLLM`). Once the app's sources exist, `DockModule` replaces the `Hello` example module in `KnownModules`.
 
 ## How to add a new module (Lintel walkthrough)
 

@@ -29,7 +29,7 @@ See **[docs/architecture.md](docs/architecture.md)** for diagrams, the lifecycle
 apps/mac/            SwiftUI menu-bar app (SwiftPM), consumes the packages below
 packages/            Portable SwiftPM packages (Foundation only; build on Linux and macOS)
   BixkuCore/         Module system: protocol, registry, event bus, storage, config
-  BixkuDock/         Dock engine          (planned)
+  BixkuDock/         Dock engine: modes, activity classification, notification triage (docs/dock.md)
   BixkuModeAgent/    Mode agent           (planned)
 scripts/             Dev tooling (secret scanning, git hooks, test runner, app icon generator)
 docs/                Architecture and release notes
