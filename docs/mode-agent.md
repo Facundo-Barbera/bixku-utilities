@@ -18,6 +18,9 @@ and tests on Linux and macOS.
 | `ModeDiff` | Field-level, human-readable diff of two mode documents. |
 | `ModeHistory` (actor) | Versioned log of applied catalog changes (persisted in module storage). |
 | `ModeAgentDockAccess` | Seam to the running Dock engine (active mode, activity, held notifications). |
+| `DockEngineAccess` | `ModeAgentDockAccess` **and** `ModeStore` over a `DockEngine` and its mode store (or a running `DockModule`). |
+| `ModeAgentController` | Drives the agent for a review UI: one coordinator, a fresh `ModeAgent` per instruction, `ReviewedProposal`s with `ProposalReviewStatus`. |
+| `AgentProviderSettings` | Provider, model and API key chosen by the user; builds the `AgentLLM` or explains what is missing. |
 | `AgentModule` | The `BixkuModule` (`online.bixku.mode-agent`); publishes `agent.proposal` and `agent.applied`. |
 
 ## Flow
@@ -152,8 +155,66 @@ text; privacy redaction of activity happens upstream in the Dock engine.
 
 ## Wiring in the app
 
-The host creates `AgentModule(store:dock:llm:)` with the Dock's `ModeStore`, an
-adapter implementing `ModeAgentDockAccess` over the Dock engine, and
-`LLMClientAgentLLM(client:)`. The Agent tab's `AgentControlling` maps to
-`ModeAgent.run`, `ProposalCoordinator.approve/reject/revertProposal`, and the
-`agent.proposal` / `agent.applied` events. That wiring is not done yet.
+```mermaid
+flowchart LR
+    Tab[Agent tab<br/>AgentViewModel] --> Adapter[ModeAgentAdapter<br/>AgentControlling]
+    Adapter --> Ctrl[ModeAgentController]
+    Ctrl -->|per instruction| Agent[ModeAgent]
+    Ctrl --> Coord[ProposalCoordinator]
+    Agent --> Coord
+    Coord --> Access[DockEngineAccess]
+    Access --> Store[(ModeStore)]
+    Access --> Engine[DockEngine]
+    Settings[Provider settings<br/>+ Keychain / env var] -->|AgentProviderSettings| Ctrl
+```
+
+The Dock registration (`DockHostModule.makeRegistration`) adds a **Mode Agent**
+window to the Dock manifest (and the `network` permission) and backs it with
+`ModeAgentAdapter`, the app's `AgentControlling`:
+
+- **Dock access.** `DockEngineAccess(module:)` resolves the running `DockModule`'s
+  engine and store on every call, so it follows restarts. Creating, adjusting,
+  deleting and reverting modes save through the store and push the new catalog into
+  the engine (`updateCatalog`) before returning; switching modes uses
+  `DockEngine.activateMode(_:reason:)` (never overrides a manual choice); activity
+  comes from `DockEngine.recentActivity(limit:)` and releasing one notification from
+  `DockEngine.releaseHeld(_:)`. While the Dock is stopped, reads are empty and writes
+  fail with "The Dock module is not running".
+- **Language model.** On every instruction the controller asks for the tab's
+  provider settings (`AgentProviderConfig` in `UserDefaults`, key from the configured
+  environment variable or the Keychain) and builds an Anthropic or OpenAI client with
+  `AgentProviderSettings.makeLLM()`. Without a key the instruction fails before any
+  request with, e.g., *"No Anthropic API key is configured. Add one under Provider in
+  the Agent tab or set the ANTHROPIC_API_KEY environment variable."* Model errors are
+  reported as *"The language model is unavailable: …"* with the provider's message.
+- **Statuses.** The agent package and the tab name states differently;
+  `ProposalReviewStatus` translates them:
+
+  | `ProposalStatus` (agent) | Agent tab |
+  | --- | --- |
+  | `pending` | `pending` |
+  | `applied` | `approved` |
+  | `rejected` | `rejected` |
+  | `reverted` | `reverted` |
+  | `failed` | `failed(message)`: the error raised while applying (stale mode, invalid definition, manual mode active…) |
+
+  The reverse mapping (`proposalStatus`) drops the message. Proposals auto-approved
+  by the policy show as `approved`. Proposals made by a run that fails later still
+  appear for review.
+- **Review.** Each proposal shows its title, the agent's justification, an
+  "influenced by untrusted data" warning when applicable, and the field diff.
+  *Undo* reverts catalog changes; mode switches and released notifications cannot
+  be undone.
+
+The app uses the default `confirm-all` policy and keeps proposals and history in
+memory for the session. `AgentModule` remains available for hosts that drive the
+agent from config and the event bus instead of a UI.
+
+## Testing
+
+`swift test` in `packages/BixkuModeAgent` (Linux and macOS, also via
+`scripts/test-packages.sh`) covers the tool loop with `ScriptedLLM`, the policy,
+proposals, history and revert, `DockEngineAccess` against a real `DockEngine` (and a
+`DockModule` lifecycle), status translation, the controller with a fake dock, and
+the provider settings. The SwiftUI side is built and tested by the macOS CI job
+(`apps/mac`, `ModeAgentAdapterTests`).

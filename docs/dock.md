@@ -247,6 +247,7 @@ Consumed: `dock.command` (`DockCommand`: `activateMode`, `saveMode`, `deleteMode
 - Implement `LLMClassifying` (activity), `LLMNotificationTriaging` (notifications) and optionally `DigestSummarizing` on top of the shared LLM client. Contracts: fast, cancellable, throw on failure; the Dock enforces timeout, cache and rate limit, and only sends privacy-redacted samples. Inputs include the mode definitions (their `description` is the natural-language intent) and recent classified activity.
 - Hand them to the Dock with `DockModule(llm:notificationLLM:summarizer:)` or, at runtime, `DockModule.setLLM(activity:notifications:)`.
 - To tune or create modes, publish `DockCommand(.saveMode(definition))` / `.deleteMode(id)` and to switch, `.activateMode(id, reason:)`; read the outcome in `dock.command-result` (validation issues are in `message`). Build definitions with the types in `Modes/` and pre-check with `ModeValidator`. The agent never overrides a manual choice.
+- The mode agent itself reaches the engine through `DockEngineAccess` (in `BixkuModeAgent`), which uses `activateMode(_:reason:)`, `recentActivity(limit:)`, `releaseHeld(_:)` (one notification) and `updateCatalog(_:)`; see [mode-agent.md](mode-agent.md#wiring-in-the-app).
 - Observe `activity.changed`, `dock.activity-classified`, `notification.triaged`, `mode.changed` and `dock.digest-ready` to learn the user's patterns.
 
 ### macOS app (T7)
