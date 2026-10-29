@@ -8,12 +8,16 @@ import SwiftUI
 final class DockModuleUIProvider: ModuleUIProvider {
     /// `viewID` of the menu-bar panel in the Dock manifest.
     private static let panelViewID = "panel"
+    /// `viewID` of the Agent window (see `DockHostModule.manifest`).
+    static let agentViewID = "agent"
 
     private let viewModel: DockViewModel
     private let floatingDock: FloatingDockController
+    private let agent: (any AgentControlling)?
 
-    init(viewModel: DockViewModel) {
+    init(viewModel: DockViewModel, agent: (any AgentControlling)? = nil) {
         self.viewModel = viewModel
+        self.agent = agent
         floatingDock = FloatingDockController(viewModel: viewModel)
     }
 
@@ -25,6 +29,8 @@ final class DockModuleUIProvider: ModuleUIProvider {
         switch descriptor.viewID {
         case Self.panelViewID:
             return AnyView(DockPanelView(viewModel: viewModel))
+        case Self.agentViewID:
+            return agent.map { AnyView(AgentTabView.make(agent: $0)) }
         default:
             return nil
         }

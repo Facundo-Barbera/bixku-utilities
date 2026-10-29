@@ -72,6 +72,8 @@ struct AgentProposal: Identifiable, Equatable, Sendable {
     var instruction: String
     /// One-line description of what the agent intends to do.
     var summary: String
+    /// The agent's reason and any caution for the reviewer, shown under the summary.
+    var detail: String?
     var changes: [AgentChange]
     var status: ProposalStatus
     var createdAt: Date
@@ -81,6 +83,7 @@ struct AgentProposal: Identifiable, Equatable, Sendable {
         id: UUID = UUID(),
         instruction: String,
         summary: String,
+        detail: String? = nil,
         changes: [AgentChange],
         status: ProposalStatus = .pending,
         createdAt: Date = Date(),
@@ -89,6 +92,7 @@ struct AgentProposal: Identifiable, Equatable, Sendable {
         self.id = id
         self.instruction = instruction
         self.summary = summary
+        self.detail = detail
         self.changes = changes
         self.status = status
         self.createdAt = createdAt
@@ -117,8 +121,8 @@ enum AgentError: Error, Equatable, LocalizedError, Sendable {
     }
 }
 
-/// What the Agent tab needs from an agent. The real implementation adapts
-/// `BixkuModeAgent`; ``PlaceholderAgent`` stands in until it is plugged in.
+/// What the Agent tab needs from an agent. ``ModeAgentAdapter`` implements it
+/// on top of `BixkuModeAgent`.
 protocol AgentControlling: AnyObject, Sendable {
     /// Every proposal of the session, oldest first. Each call returns a new
     /// subscription that yields the current list immediately and again after

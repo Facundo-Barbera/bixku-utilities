@@ -17,9 +17,9 @@ struct AgentTabView: View {
         _model = StateObject(wrappedValue: model())
     }
 
-    /// The tab wired to the placeholder agent and the Keychain, until the real agent adapter is plugged in.
-    static func makeDefault() -> AgentTabView {
-        AgentTabView(model: AgentViewModel(agent: PlaceholderAgent(), secrets: KeychainSecretStore()))
+    /// The tab for `agent` (shared, so proposals outlive the window), with API keys in the Keychain.
+    static func make(agent: any AgentControlling) -> AgentTabView {
+        AgentTabView(model: AgentViewModel(agent: agent, secrets: KeychainSecretStore()))
     }
 
     var body: some View {
@@ -111,6 +111,11 @@ private struct ProposalCard: View {
                 Text(proposal.summary)
                     .font(.headline)
                     .fixedSize(horizontal: false, vertical: true)
+                if let detail = proposal.detail {
+                    Text(detail)
+                        .font(.callout)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 ProposalDiffView(lines: proposal.diffLines)
 
