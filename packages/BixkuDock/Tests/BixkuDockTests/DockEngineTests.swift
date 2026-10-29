@@ -364,6 +364,28 @@ final class DockEngineTests: XCTestCase {
         XCTAssertEqual(engine.state.held, [])
     }
 
+    func testReleaseOneHeldNotification() async {
+        let engine = makeEngine(DockConfiguration(defaultMode: .writing, tickInterval: nil))
+        let first = await engine.ingest(notification("com.apple.MobileSMS", title: "one"))
+        let second = await engine.ingest(notification("com.apple.MobileSMS", title: "two"))
+        let released = await engine.releaseHeld(first.id)
+        XCTAssertEqual(released?.id, first.id)
+        XCTAssertEqual(engine.state.held.map(\.id), [second.id])
+        let again = await engine.releaseHeld(first.id)
+        XCTAssertNil(again)
+    }
+
+    func testRecentActivityKeepsOneEntryPerFocusChange() async {
+        let engine = makeEngine(DockConfiguration(defaultMode: .writing, tickInterval: nil))
+        await engine.ingest(sample("com.apple.dt.Xcode", title: "A", at: 0))
+        await engine.ingest(sample("com.apple.dt.Xcode", title: "A", at: 5))
+        await engine.ingest(sample("com.apple.Safari", title: "B", at: 10))
+        let all = await engine.recentActivity(limit: 10)
+        XCTAssertEqual(all.map(\.sample.appBundleID), ["com.apple.dt.Xcode", "com.apple.Safari"])
+        let last = await engine.recentActivity(limit: 1)
+        XCTAssertEqual(last.map(\.sample.appBundleID), ["com.apple.Safari"])
+    }
+
     func testSummarizerReplacesDigestText() async throws {
         let summarizer = MockLLM(summary: { digest in "You missed \(digest.totalCount) things." })
         let engine = makeEngine(DockConfiguration(defaultMode: .writing, tickInterval: nil), summarizer: summarizer)

@@ -164,6 +164,12 @@ public actor DockEngine {
         catalog
     }
 
+    /// The most recent classified activity (one entry per change of focus or
+    /// idleness, privacy-redacted), newest last.
+    public func recentActivity(limit: Int) -> [ClassifiedActivity] {
+        Array(timeline.suffix(max(0, limit)))
+    }
+
     // MARK: Activity
 
     /// Processes one activity sample.
@@ -465,6 +471,15 @@ public actor DockEngine {
         let drained = held.drain().items
         publishState()
         return drained
+    }
+
+    /// Removes and returns one held notification (e.g. "deliver this one now"), or
+    /// `nil` if it is no longer held. The rest stay for the end-of-mode digest.
+    @discardableResult
+    public func releaseHeld(_ id: UUID) -> TriagedNotification? {
+        let released = held.remove(id: id)
+        if released != nil { publishState() }
+        return released
     }
 
     // MARK: Helpers

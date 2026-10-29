@@ -201,6 +201,12 @@ public struct HeldQueue: Sendable, Equatable {
         }
     }
 
+    /// Removes and returns the item with `id`, or `nil` if it is not queued.
+    public mutating func remove(id: UUID) -> TriagedNotification? {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return nil }
+        return items.remove(at: index)
+    }
+
     /// Removes and returns everything.
     public mutating func drain() -> (items: [TriagedNotification], dropped: Int) {
         defer {
