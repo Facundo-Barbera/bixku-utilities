@@ -69,7 +69,7 @@ public actor ModeAgent {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
-                throw ModeAgentError.unavailable(String(describing: error))
+                throw ModeAgentError.unavailable(ModeAgentController.describe(error))
             }
             transcript.append(AgentMessage(role: .assistant, content: text))
 

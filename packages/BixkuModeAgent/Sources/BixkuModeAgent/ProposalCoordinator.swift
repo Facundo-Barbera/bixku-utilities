@@ -43,6 +43,10 @@ public enum ModeAgentError: Error, Sendable, Equatable, CustomStringConvertible 
     }
 }
 
+extension ModeAgentError: LocalizedError {
+    public var errorDescription: String? { description }
+}
+
 /// Turns agent actions into proposals, gates them through the ``ApprovalPolicy``,
 /// applies approved ones to the ``ModeStore`` / dock, and keeps the versioned
 /// ``ModeHistory`` (with revert).
